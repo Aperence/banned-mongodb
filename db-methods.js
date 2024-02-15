@@ -21,11 +21,16 @@ function getChangeStream(client){
   return users.watch();
 }
 
+function addCallbackOnChange(client, callback){
+    getChangeStream(client).on("change", callback);
+}
+
 async function addUser(client, token, usernames, isAssistant){
     const users = client.db('auth').collection('auth');
     let found = await users.findOne({"token" : token});
     if (found){
         for (let u of usernames){
+            if (found["discordUsers"].includes(u)) continue
             found["discordUsers"].push(u)
         }
         await users.replaceOne({"token" : token}, found)
@@ -40,21 +45,15 @@ async function addUser(client, token, usernames, isAssistant){
     }
 }
 
-
-// Replace the uri string with your connection string.
-const uri = "mongodb://localhost:27017/?replicaSet=rs0";
-let client = connect(uri)
-async function run() {
-  try {
-    //await banUser(client, "aperence")
-    setTimeout(async () => await addUser(client, "test", ["test"], false), 1000)
-    let changeStream = getChangeStream(client)
-    for await (const change of changeStream) {
-      console.log("Received change:\n", change);
-    }
-  } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
-  }
+async function disconnect(client){
+    await client.close()
 }
-run().catch(console.dir);
+
+module.exports = {
+    "connect" : connect,
+    "getChangeStream" : getChangeStream,
+    "addCallbackOnChange" : addCallbackOnChange,
+    "addUser" : addUser,
+    "banUser" : banUser,
+    "disconnect" : disconnect
+}
